@@ -1,6 +1,6 @@
 {
-  "name": "Doodle Pad App",
-  "short_name": "DoodlePad",
+  "name": "FORGE ENGINE",
+  "short_name": "FORGE ENGINE",
   "description": "A simple and fun doodling application.",
   "start_url": "./",
   "display": "standalone",
