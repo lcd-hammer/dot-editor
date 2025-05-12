@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doodle Pad App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+    <link rel="manifest" href="./manifest.json"> <meta name="theme-color" content="#4f46e5">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DoodlePad">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px; height: 24px;
+            background: #4F46E5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            margin-top: -9px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px; height: 20px;
+            background: #4F46E5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        input[type="range"] { padding: 0; }
+        .mode-button-active {
+            background-color: #3B82F6 !important;
+            color: white !important;
+        }
+        .mode-button-inactive {
+            background-color: #E5E7EB;
+            color: #374151;
+        }
+        .mode-button-inactive:hover {
+            background-color: #D1D5DB;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-indigo-500 selection:text-white">
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-lg">
+        <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">Doodle Pad</h1>
+        <div class="controls mb-6 space-y-4">
+            <div class="flex items-center space-x-2">
+                <label for="toolSizeSlider" class="text-sm font-medium text-slate-700 whitespace-nowrap w-28">Tool Size:</label>
+                <input type="range" id="toolSizeSlider" min="1" max="100" value="10" class="flex-grow h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                <span id="toolSizeValue" class="text-sm font-medium text-slate-700 w-10 text-right">10</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <label for="dotSpacingSlider" class="text-sm font-medium text-slate-700 whitespace-nowrap w-28">Dot Spacing:</label>
+                <input type="range" id="dotSpacingSlider" min="1" max="100" value="10" class="flex-grow h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                <span id="dotSpacingValue" class="text-sm font-medium text-slate-700 w-10 text-right">10</span>
+            </div>
+            <div class="flex flex-col items-center py-2 space-y-1">
+                <span class="text-xs text-slate-600">Current Tool Preview:</span>
+                <div id="toolSizeIndicatorWrapper" class="w-28 h-28 bg-slate-200 rounded-md flex justify-center items-center overflow-hidden shadow-inner">
+                    <div id="toolSizeIndicator" class="rounded-full transition-all duration-100 ease-in-out"></div>
+                </div>
+            </div>
+            <div class="flex space-x-2 mt-2">
+                <button id="modeToggleBtn" class="flex-1 mode-button-inactive text-sm font-semibold py-2.5 px-4 rounded-lg shadow-sm">Switch to Eraser</button>
+                <button id="clearScreenBtn" class="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg shadow-md">Clear Screen</button>
+            </div>
+            <button id="exportCsvBtn" class="w-full mt-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg shadow-md">Export Dots (CSV)</button>
+        </div>
+        <div class="aspect-[4/3] rounded-lg overflow-hidden shadow-inner bg-slate-50 border border-slate-300">
+            <canvas id="doodleCanvas" class="w-full h-full block"></canvas>
+        </div>
+        <div id="messageBox" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                <p id="messageText" class="text-slate-700 mb-4">Message</p>
+                <button id="closeMessageBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg">OK</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // ... ALL YOUR EXISTING DOODLE APP JAVASCRIPT LOGIC GOES HERE ...
+        // (Make sure the entire script from the previous Doodle App version is included)
+        const canvas = document.getElementById('doodleCanvas');
+        const ctx = canvas.getContext('2d');
+        const toolSizeSlider = document.getElementById('toolSizeSlider');
+        const toolSizeValue = document.getElementById('toolSizeValue');
+        const dotSpacingSlider = document.getElementById('dotSpacingSlider');
+        const dotSpacingValue = document.getElementById('dotSpacingValue');
+        const clearScreenBtn = document.getElementById('clearScreenBtn');
+        const modeToggleBtn = document.getElementById('modeToggleBtn');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const toolSizeIndicator = document.getElementById('toolSizeIndicator');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const closeMessageBtn = document.getElementById('closeMessageBtn');
+
+        let drawnDots = [];
+        let dotIdCounter = 0;
+        let isDrawing = false;
+        let currentToolSize = parseInt(toolSizeSlider.value, 10);
+        let currentDotSpacing = parseInt(dotSpacingSlider.value, 10);
+        let lastActionPointX = 0;
+        let lastActionPointY = 0;
+        let defaultDrawColor = '#333333';
+        let isErasing = false;
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = defaultDrawColor;
+            for (const dot of drawnDots) {
+                if (dot.isVisible) {
+                    ctx.beginPath();
+                    ctx.arc(dot.x, dot.y, dot.size / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        function checkCollision(x1, y1, size1, x2, y2, size2) {
+            const dx = x1 - x2;
+            const dy = y1 - y2;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (size1 / 2 + size2 / 2);
+        }
+        function resizeCanvas() {
+            const canvasContainer = canvas.parentElement;
+            canvas.width = canvasContainer.clientWidth;
+            canvas.height = canvasContainer.clientHeight;
+            ctx.fillStyle = defaultDrawColor;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            redrawCanvas();
+        }
+        function updateToolSizeIndicator() {
+            if (!toolSizeIndicator) return;
+            toolSizeIndicator.style.width = currentToolSize + 'px';
+            toolSizeIndicator.style.height = currentToolSize + 'px';
+            if (isErasing) {
+                toolSizeIndicator.style.backgroundColor = 'rgba(226, 232, 240, 0.7)';
+                toolSizeIndicator.style.border = '2px dashed #94A3B8';
+            } else {
+                toolSizeIndicator.style.backgroundColor = defaultDrawColor;
+                toolSizeIndicator.style.border = 'none';
+            }
+        }
+        function startDrawingAction(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            lastActionPointX = x;
+            lastActionPointY = y;
+            if (isErasing) {
+                for (const dot of drawnDots) {
+                    if (dot.isVisible && checkCollision(x, y, currentToolSize, dot.x, dot.y, dot.size)) {
+                        dot.isVisible = false;
+                    }
+                }
+            } else {
+                drawnDots.push({ id: dotIdCounter++, x: x, y: y, size: currentToolSize, isVisible: true });
+            }
+            redrawCanvas();
+        }
+        function performDrawingAction(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const currentX = (e.clientX || e.touches[0].clientX) - rect.left;
+            const currentY = (e.clientY || e.touches[0].clientY) - rect.top;
+            const dX = currentX - lastActionPointX;
+            const dY = currentY - lastActionPointY;
+            const distToCurrentMouse = Math.sqrt(dX * dX + dY * dY);
+            const angle = Math.atan2(dY, dX);
+            const spacing = Math.max(1, currentDotSpacing);
+            let numSteps = Math.floor(distToCurrentMouse / spacing);
+            let needsRedraw = false;
+            for (let i = 1; i <= numSteps; i++) {
+                const actionX = lastActionPointX + Math.cos(angle) * spacing * i;
+                const actionY = lastActionPointY + Math.sin(angle) * spacing * i;
+                if (isErasing) {
+                    for (const dot of drawnDots) {
+                        if (dot.isVisible && checkCollision(actionX, actionY, currentToolSize, dot.x, dot.y, dot.size)) {
+                            dot.isVisible = false;
+                            needsRedraw = true;
+                        }
+                    }
+                } else {
+                    drawnDots.push({ id: dotIdCounter++, x: actionX, y: actionY, size: currentToolSize, isVisible: true });
+                    needsRedraw = true;
+                }
+            }
+            if (numSteps > 0) {
+                lastActionPointX = lastActionPointX + Math.cos(angle) * spacing * numSteps;
+                lastActionPointY = lastActionPointY + Math.sin(angle) * spacing * numSteps;
+            }
+            if (needsRedraw) redrawCanvas();
+        }
+        function stopDrawingAction() {
+            if (isDrawing) isDrawing = false;
+        }
+        toolSizeSlider.addEventListener('input', (e) => {
+            currentToolSize = parseInt(e.target.value, 10);
+            toolSizeValue.textContent = currentToolSize;
+            updateToolSizeIndicator();
+        });
+        dotSpacingSlider.addEventListener('input', (e) => {
+            currentDotSpacing = parseInt(e.target.value, 10);
+            dotSpacingValue.textContent = currentDotSpacing;
+        });
+        function updateModeButtonAppearance() {
+            const toolSizeLabel = document.querySelector('label[for="toolSizeSlider"]');
+            if (isErasing) {
+                modeToggleBtn.textContent = 'Switch to Pen';
+                modeToggleBtn.classList.remove('mode-button-inactive');
+                modeToggleBtn.classList.add('mode-button-active');
+                toolSizeLabel.textContent = 'Eraser Size:';
+            } else {
+                modeToggleBtn.textContent = 'Switch to Eraser';
+                modeToggleBtn.classList.remove('mode-button-active');
+                modeToggleBtn.classList.add('mode-button-inactive');
+                toolSizeLabel.textContent = 'Pen Size:';
+            }
+            updateToolSizeIndicator();
+        }
+        modeToggleBtn.addEventListener('click', () => {
+            isErasing = !isErasing;
+            updateModeButtonAppearance();
+        });
+        clearScreenBtn.addEventListener('click', () => {
+            drawnDots = [];
+            dotIdCounter = 0;
+            redrawCanvas();
+            showMessage("Doodle area cleared!");
+        });
+        exportCsvBtn.addEventListener('click', () => {
+            if (drawnDots.filter(dot => dot.isVisible).length === 0) {
+                showMessage("No dots to export!");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "X,Y,Size\r\n";
+            drawnDots.forEach(dot => {
+                if (dot.isVisible) {
+                    csvContent += `${dot.x.toFixed(2)},${dot.y.toFixed(2)},${dot.size}\r\n`;
+                }
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "doodle_dots.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showMessage("Dots exported to doodle_dots.csv");
+        });
+        function showMessage(msg) {
+            messageText.textContent = msg;
+            messageBox.classList.remove('hidden');
+        }
+        closeMessageBtn.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+        canvas.addEventListener('mousedown', startDrawingAction);
+        canvas.addEventListener('mousemove', performDrawingAction);
+        canvas.addEventListener('mouseup', stopDrawingAction);
+        canvas.addEventListener('mouseout', stopDrawingAction);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawingAction(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); performDrawingAction(e); });
+        canvas.addEventListener('touchend', stopDrawingAction);
+        canvas.addEventListener('touchcancel', stopDrawingAction);
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            currentToolSize = parseInt(toolSizeSlider.value, 10);
+            toolSizeValue.textContent = currentToolSize;
+            currentDotSpacing = parseInt(dotSpacingSlider.value, 10);
+            dotSpacingValue.textContent = currentDotSpacing;
+            updateModeButtonAppearance();
+        });
+        window.addEventListener('resize', resizeCanvas);
+
+        // Script to register the Service Worker (MUST be after your app logic or at the end of body)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js') // Ensure path to sw.js is correct
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
