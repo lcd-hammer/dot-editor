@@ -2,7 +2,7 @@
   "name": "Doodle Pad App",
   "short_name": "DoodlePad",
   "description": "A simple and fun doodling application.",
-  "start_url": "./doodle_app.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#4f46e5",
