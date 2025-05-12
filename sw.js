@@ -3,7 +3,7 @@
 const CACHE_NAME = 'doodle-pad-cache-v1'; // Increment version if you change cached files
 const urlsToCache = [
   './', // This will cache the root (usually your index or main page)
-  './doodle_app.html',
+  './index.html',
   './manifest.json', // Cache the manifest file too
   // Add paths to any other local CSS or JS files you might have.
   // For external resources like Tailwind CDN and Google Fonts, they are handled by the fetch strategy.
