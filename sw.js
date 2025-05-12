@@ -1,6 +1,6 @@
 // sw.js - Service Worker
 
-const CACHE_NAME = 'doodle-pad-cache-v1'; // Increment version if you change cached files
+const CACHE_NAME = 'doodle-pad-cache-v2'; // Increment version if you change cached files
 const urlsToCache = [
   './', // This will cache the root (usually your index or main page)
   './index.html',
